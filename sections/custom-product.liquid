@@ -1,0 +1,539 @@
+{% comment %}
+  Custom product page — standalone layout inspired by a clean two-column
+  e-commerce product page. Self-contained: own markup, styles and JS.
+  Uses native Shopify cart (/cart/add.js) and checkout.
+{% endcomment %}
+
+{%- liquid
+  assign product = section.settings.product | default: product
+  assign current_variant = product.selected_or_first_available_variant
+  assign accent = section.settings.accent_color
+  assign accent_alt = section.settings.accent_color_alt
+-%}
+
+<section
+  class="cp"
+  id="cp-{{ section.id }}"
+  style="--cp-accent: {{ accent }}; --cp-accent-alt: {{ accent_alt }};"
+>
+  <div class="cp__wrap">
+    {%- comment -%} ---------------- GALLERY ---------------- {%- endcomment -%}
+    <div class="cp__gallery" data-cp-gallery>
+      <div class="cp__stage">
+        {%- if product.media.size > 1 -%}
+          <button class="cp__arrow cp__arrow--prev" type="button" aria-label="Previous image" data-cp-prev>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="cp__arrow cp__arrow--next" type="button" aria-label="Next image" data-cp-next>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        {%- endif -%}
+
+        {%- for media in product.media -%}
+          <div class="cp__slide {% if forloop.first %}is-active{% endif %}" data-cp-slide="{{ forloop.index0 }}">
+            {%- case media.media_type -%}
+              {%- when 'image' -%}
+                <img
+                  src="{{ media | image_url: width: 1200 }}"
+                  srcset="{{ media | image_url: width: 600 }} 600w, {{ media | image_url: width: 1200 }} 1200w"
+                  sizes="(min-width: 900px) 45vw, 100vw"
+                  alt="{{ media.alt | escape }}"
+                  width="{{ media.width }}"
+                  height="{{ media.height }}"
+                  loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"
+                >
+              {%- when 'video' -%}
+                {{ media | media_tag: image_size: '1200x', controls: true }}
+              {%- when 'external_video' -%}
+                {{ media | media_tag: image_size: '1200x' }}
+              {%- when 'model' -%}
+                {{ media | media_tag }}
+              {%- else -%}
+                <img src="{{ media | image_url: width: 1200 }}" alt="{{ media.alt | escape }}" width="{{ media.preview_image.width | default: 1200 }}" height="{{ media.preview_image.height | default: 1200 }}" loading="lazy">
+            {%- endcase -%}
+          </div>
+        {%- else -%}
+          <div class="cp__slide is-active">
+            {{ 'product-1' | placeholder_svg_tag: 'cp__placeholder' }}
+          </div>
+        {%- endfor -%}
+      </div>
+
+      {%- if product.media.size > 1 -%}
+        <div class="cp__thumbs" data-cp-thumbs>
+          {%- for media in product.media -%}
+            <button
+              type="button"
+              class="cp__thumb {% if forloop.first %}is-active{% endif %}"
+              data-cp-thumb="{{ forloop.index0 }}"
+              aria-label="View image {{ forloop.index }}"
+            >
+              <img src="{{ media.preview_image | image_url: width: 200 }}" alt="{{ media.alt | escape }}" loading="lazy" width="120" height="120">
+              {%- if media.media_type == 'video' or media.media_type == 'external_video' -%}
+                <span class="cp__thumb-play">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                </span>
+              {%- endif -%}
+            </button>
+          {%- endfor -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+    {%- comment -%} ---------------- DETAILS ---------------- {%- endcomment -%}
+    <div class="cp__details">
+      {%- if product.type != blank -%}
+        <p class="cp__category">{{ product.type }}</p>
+      {%- endif -%}
+
+      <div class="cp__title-row">
+        <h1 class="cp__title">{{ product.title }}</h1>
+        <span class="cp__stock" data-cp-stock>
+          {%- if current_variant.available -%}In Stock{%- else -%}Sold Out{%- endif -%}
+        </span>
+      </div>
+
+      {%- if section.settings.show_rating -%}
+        <div class="cp__rating" aria-label="Rated {{ section.settings.rating_value }} out of 5">
+          <span class="cp__stars" style="--cp-rating: {{ section.settings.rating_value }};" aria-hidden="true">★★★★★</span>
+          <span class="cp__rating-text">{{ section.settings.rating_value }} ({{ section.settings.rating_count }} Reviews)</span>
+        </div>
+      {%- endif -%}
+
+      <div class="cp__price" data-cp-price>
+        <span class="cp__price-current" data-cp-price-current>{{ current_variant.price | money }}</span>
+        {%- if current_variant.compare_at_price > current_variant.price -%}
+          <span class="cp__price-compare" data-cp-price-compare>{{ current_variant.compare_at_price | money }}</span>
+        {%- else -%}
+          <span class="cp__price-compare" data-cp-price-compare hidden></span>
+        {%- endif -%}
+      </div>
+
+      {%- if product.description != blank -%}
+        <div class="cp__description rte">{{ product.description }}</div>
+      {%- endif -%}
+
+      {%- comment -%} ---------------- FORM ---------------- {%- endcomment -%}
+      <form data-cp-form>
+        {%- unless product.has_only_default_variant -%}
+          {%- for option in product.options_with_values -%}
+            <div class="cp__option" data-cp-option-index="{{ forloop.index0 }}">
+              <span class="cp__option-label">{{ option.name }}</span>
+              <div class="cp__pills">
+                {%- for value in option.values -%}
+                  <label class="cp__pill {% if option.selected_value == value %}is-selected{% endif %}">
+                    <input
+                      type="radio"
+                      name="option-{{ option.position }}"
+                      value="{{ value | escape }}"
+                      data-cp-option-input
+                      {% if option.selected_value == value %}checked{% endif %}
+                    >
+                    <span>{{ value }}</span>
+                  </label>
+                {%- endfor -%}
+              </div>
+            </div>
+          {%- endfor -%}
+        {%- endunless -%}
+
+        <input type="hidden" name="id" data-cp-variant-id value="{{ current_variant.id }}">
+
+        <div class="cp__actions">
+          <div class="cp__qty">
+            <button type="button" class="cp__qty-btn" data-cp-qty-minus aria-label="Decrease quantity">−</button>
+            <input type="number" class="cp__qty-input" data-cp-qty value="1" min="1" inputmode="numeric" aria-label="Quantity">
+            <button type="button" class="cp__qty-btn" data-cp-qty-plus aria-label="Increase quantity">+</button>
+          </div>
+
+          <button type="button" class="cp__btn cp__btn--cart" data-cp-add {% unless current_variant.available %}disabled{% endunless %}>
+            <span data-cp-add-text>{% if current_variant.available %}Add to Cart{% else %}Sold Out{% endif %}</span>
+          </button>
+
+          <button type="button" class="cp__btn cp__btn--buy" data-cp-buy {% unless current_variant.available %}disabled{% endunless %}>
+            Buy Now
+          </button>
+        </div>
+      </form>
+
+      <div class="cp__meta">
+        {%- if section.settings.show_sku and current_variant.sku != blank -%}
+          <p class="cp__meta-row"><strong>SKU:</strong> <span data-cp-sku>{{ current_variant.sku }}</span></p>
+        {%- endif -%}
+        {%- if section.settings.show_tags and product.tags.size > 0 -%}
+          <p class="cp__meta-row"><strong>Tags:</strong> {{ product.tags | join: ', ' }}</p>
+        {%- endif -%}
+        {%- if section.settings.show_share -%}
+          {%- assign share_url = shop.url | append: product.url -%}
+          <p class="cp__meta-row cp__share">
+            <strong>Share:</strong>
+            <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 22v-8h3l1-4h-4V7.5c0-1.1.3-1.9 1.9-1.9H17V2.1C16.7 2.1 15.5 2 14.2 2 11.4 2 9.5 3.7 9.5 6.8V10H6.5v4h3v8H13z"/></svg>
+            </a>
+            <a href="https://twitter.com/intent/tweet?url={{ share_url }}&text={{ product.title | url_encode }}" target="_blank" rel="noopener" aria-label="Share on X">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 2h3l-7 8 8 12h-6l-5-7-6 7H2l8-9L2 2h6l4 6 6-6z"/></svg>
+            </a>
+            <a href="https://pinterest.com/pin/create/button/?url={{ share_url }}&description={{ product.title | url_encode }}" target="_blank" rel="noopener" aria-label="Share on Pinterest">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 00-3.6 19.3c-.1-.8-.1-2 0-2.9l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.4 0 .9-.5 2.2-.8 3.4-.2.9.5 1.7 1.5 1.7 1.8 0 3-2.3 3-5 0-2-1.4-3.6-3.9-3.6a4.4 4.4 0 00-4.6 4.4c0 .9.3 1.5.7 2 .2.2.2.3.1.5l-.2.9c-.1.3-.3.4-.6.2-1.2-.5-1.7-1.9-1.7-3.4 0-2.5 2.1-5.5 6.3-5.5 3.4 0 5.6 2.4 5.6 5 0 3.5-1.9 6.1-4.8 6.1-1 0-1.9-.5-2.2-1.1l-.6 2.4c-.2.8-.7 1.7-1 2.3A10 10 0 1012 2z"/></svg>
+            </a>
+            <a href="mailto:?subject={{ product.title | url_encode }}&body={{ share_url }}" aria-label="Share by email">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+            </a>
+          </p>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" data-cp-variants>{{ product.variants | json }}</script>
+</section>
+
+{% comment %} theme-check-disable {% endcomment %}
+<style>
+  #cp-{{ section.id }} {
+    --cp-radius: 16px;
+    --cp-border: rgba(0,0,0,.1);
+    --cp-muted: rgba(0,0,0,.55);
+  }
+  #cp-{{ section.id }} .cp__wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+    align-items: start;
+  }
+  #cp-{{ section.id }} .cp__gallery { display: flex; flex-direction: column; gap: 16px; }
+  #cp-{{ section.id }} .cp__stage {
+    position: relative;
+    border-radius: var(--cp-radius);
+    overflow: hidden;
+    background: #f5f4f0;
+    aspect-ratio: 1 / 1;
+  }
+  #cp-{{ section.id }} .cp__slide { display: none; width: 100%; height: 100%; }
+  #cp-{{ section.id }} .cp__slide.is-active { display: block; }
+  #cp-{{ section.id }} .cp__slide img,
+  #cp-{{ section.id }} .cp__slide video,
+  #cp-{{ section.id }} .cp__slide iframe {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  #cp-{{ section.id }} .cp__arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    z-index: 2; width: 40px; height: 40px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,.9); color: #1a1a1a; cursor: pointer;
+    display: grid; place-items: center; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    transition: background .15s;
+  }
+  #cp-{{ section.id }} .cp__arrow:hover { background: #fff; }
+  #cp-{{ section.id }} .cp__arrow--prev { left: 12px; }
+  #cp-{{ section.id }} .cp__arrow--next { right: 12px; }
+  #cp-{{ section.id }} .cp__thumbs { display: flex; gap: 12px; flex-wrap: wrap; }
+  #cp-{{ section.id }} .cp__thumb {
+    position: relative; width: 84px; height: 84px; padding: 0;
+    border-radius: 12px; overflow: hidden; cursor: pointer;
+    border: 2px solid transparent; background: #f5f4f0;
+  }
+  #cp-{{ section.id }} .cp__thumb.is-active { border-color: var(--cp-accent); }
+  #cp-{{ section.id }} .cp__thumb img { width: 100%; height: 100%; object-fit: cover; }
+  #cp-{{ section.id }} .cp__thumb-play {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgba(0,0,0,.25); color: #fff;
+  }
+
+  #cp-{{ section.id }} .cp__details { display: flex; flex-direction: column; gap: 18px; }
+  #cp-{{ section.id }} .cp__category {
+    margin: 0; text-transform: uppercase; letter-spacing: .08em;
+    font-size: .8rem; color: var(--cp-muted);
+  }
+  #cp-{{ section.id }} .cp__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  #cp-{{ section.id }} .cp__title { margin: 0; font-size: 2rem; line-height: 1.15; }
+  #cp-{{ section.id }} .cp__stock {
+    font-size: .75rem; font-weight: 600; padding: 4px 12px; border-radius: 999px;
+    background: color-mix(in srgb, var(--cp-accent) 14%, white);
+    color: var(--cp-accent); white-space: nowrap;
+  }
+  #cp-{{ section.id }} .cp__rating { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+  #cp-{{ section.id }} .cp__stars {
+    --cp-rating: 5;
+    font-size: 1.05rem; letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--cp-accent-alt) calc(var(--cp-rating) / 5 * 100%), #d8d8d8 0);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #cp-{{ section.id }} .cp__rating-text { color: var(--cp-muted); }
+  #cp-{{ section.id }} .cp__price { display: flex; align-items: baseline; gap: 12px; }
+  #cp-{{ section.id }} .cp__price-current { font-size: 1.6rem; font-weight: 700; color: var(--cp-accent-alt); }
+  #cp-{{ section.id }} .cp__price-compare { font-size: 1.1rem; color: var(--cp-muted); text-decoration: line-through; }
+  #cp-{{ section.id }} .cp__description { color: rgba(0,0,0,.7); line-height: 1.6; }
+
+  #cp-{{ section.id }} .cp__option { margin-top: 4px; }
+  #cp-{{ section.id }} .cp__option-label { display: block; font-weight: 600; margin-bottom: 8px; font-size: .95rem; }
+  #cp-{{ section.id }} .cp__pills { display: flex; flex-wrap: wrap; gap: 10px; }
+  #cp-{{ section.id }} .cp__pill { position: relative; cursor: pointer; }
+  #cp-{{ section.id }} .cp__pill input { position: absolute; opacity: 0; pointer-events: none; }
+  #cp-{{ section.id }} .cp__pill span {
+    display: inline-block; padding: 9px 18px; border-radius: 999px;
+    border: 1px solid var(--cp-border); font-size: .9rem; transition: all .15s;
+  }
+  #cp-{{ section.id }} .cp__pill.is-selected span { background: var(--cp-accent); color: #fff; border-color: var(--cp-accent); }
+
+  #cp-{{ section.id }} .cp__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  #cp-{{ section.id }} .cp__qty {
+    display: flex; align-items: center; border: 1px solid var(--cp-border);
+    border-radius: 999px; overflow: hidden;
+  }
+  #cp-{{ section.id }} .cp__qty-btn {
+    width: 40px; height: 44px; border: none; background: none; font-size: 1.2rem; cursor: pointer; color: inherit;
+  }
+  #cp-{{ section.id }} .cp__qty-input {
+    width: 40px; height: 44px; border: none; text-align: center; font-size: 1rem;
+    -moz-appearance: textfield; background: none;
+  }
+  #cp-{{ section.id }} .cp__qty-input::-webkit-outer-spin-button,
+  #cp-{{ section.id }} .cp__qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  #cp-{{ section.id }} .cp__btn {
+    height: 46px; padding: 0 26px; border: none; border-radius: 999px;
+    font-size: .95rem; font-weight: 600; cursor: pointer; transition: opacity .15s, transform .05s;
+  }
+  #cp-{{ section.id }} .cp__btn:active { transform: scale(.98); }
+  #cp-{{ section.id }} .cp__btn:disabled { opacity: .5; cursor: not-allowed; }
+  #cp-{{ section.id }} .cp__btn--cart { background: var(--cp-accent); color: #fff; }
+  #cp-{{ section.id }} .cp__btn--buy { background: var(--cp-accent-alt); color: #fff; }
+
+  #cp-{{ section.id }} .cp__meta { margin-top: 8px; font-size: .9rem; color: var(--cp-muted); display: flex; flex-direction: column; gap: 6px; }
+  #cp-{{ section.id }} .cp__meta-row { margin: 0; }
+  #cp-{{ section.id }} .cp__meta-row strong { color: rgba(0,0,0,.75); }
+  #cp-{{ section.id }} .cp__share { display: flex; align-items: center; gap: 10px; }
+  #cp-{{ section.id }} .cp__share a { color: var(--cp-accent); display: inline-flex; transition: opacity .15s; }
+  #cp-{{ section.id }} .cp__share a:hover { opacity: .6; }
+
+  @media (max-width: 860px) {
+    #cp-{{ section.id }} .cp__wrap { grid-template-columns: 1fr; gap: 32px; padding: 24px 16px 48px; }
+    #cp-{{ section.id }} .cp__title { font-size: 1.5rem; }
+  }
+</style>
+{% comment %} theme-check-enable {% endcomment %}
+
+<script>
+  (function () {
+    var root = document.getElementById('cp-{{ section.id }}');
+    if (!root) return;
+
+    var variants = [];
+    try { variants = JSON.parse(root.querySelector('[data-cp-variants]').textContent); } catch (e) {}
+
+    var slides = root.querySelectorAll('[data-cp-slide]');
+    var thumbs = root.querySelectorAll('[data-cp-thumb]');
+    var current = 0;
+
+    function show(i) {
+      if (!slides.length) return;
+      i = (i + slides.length) % slides.length;
+      slides[current].classList.remove('is-active');
+      slides[i].classList.add('is-active');
+      if (thumbs[current]) thumbs[current].classList.remove('is-active');
+      if (thumbs[i]) thumbs[i].classList.add('is-active');
+      current = i;
+    }
+    var prev = root.querySelector('[data-cp-prev]');
+    var next = root.querySelector('[data-cp-next]');
+    if (prev) prev.addEventListener('click', function () { show(current - 1); });
+    if (next) next.addEventListener('click', function () { show(current + 1); });
+    thumbs.forEach(function (t) {
+      t.addEventListener('click', function () { show(parseInt(t.getAttribute('data-cp-thumb'), 10)); });
+    });
+
+    // --- Variant selection ---
+    var optionInputs = root.querySelectorAll('[data-cp-option-input]');
+    var variantIdInput = root.querySelector('[data-cp-variant-id]');
+    var priceCurrent = root.querySelector('[data-cp-price-current]');
+    var priceCompare = root.querySelector('[data-cp-price-compare]');
+    var stockEl = root.querySelector('[data-cp-stock]');
+    var skuEl = root.querySelector('[data-cp-sku]');
+    var addBtn = root.querySelector('[data-cp-add]');
+    var addText = root.querySelector('[data-cp-add-text]');
+    var buyBtn = root.querySelector('[data-cp-buy]');
+
+    var moneySymbol = {{ shop.currency | json }} === 'INR' ? 'Rs. ' : ({{ cart.currency.symbol | json }} || '');
+    function formatMoney(cents) {
+      return moneySymbol + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function selectedOptions() {
+      var opts = [];
+      root.querySelectorAll('[data-cp-option-index]').forEach(function (group) {
+        var checked = group.querySelector('input:checked');
+        if (checked) opts.push(checked.value);
+      });
+      return opts;
+    }
+
+    function findVariant(opts) {
+      if (!opts.length) return variants[0];
+      return variants.find(function (v) {
+        return v.options.every(function (o, idx) { return o === opts[idx]; });
+      });
+    }
+
+    function update() {
+      var v = findVariant(selectedOptions());
+      if (!v) {
+        if (addBtn) { addBtn.disabled = true; }
+        if (addText) addText.textContent = 'Unavailable';
+        if (buyBtn) buyBtn.disabled = true;
+        if (stockEl) stockEl.textContent = 'Unavailable';
+        return;
+      }
+      variantIdInput.value = v.id;
+      if (priceCurrent) priceCurrent.textContent = formatMoney(v.price);
+      if (priceCompare) {
+        if (v.compare_at_price && v.compare_at_price > v.price) {
+          priceCompare.textContent = formatMoney(v.compare_at_price);
+          priceCompare.hidden = false;
+        } else { priceCompare.hidden = true; }
+      }
+      if (skuEl) skuEl.textContent = v.sku || '';
+      if (stockEl) stockEl.textContent = v.available ? 'In Stock' : 'Sold Out';
+      if (addBtn) { addBtn.disabled = !v.available; }
+      if (addText) addText.textContent = v.available ? 'Add to Cart' : 'Sold Out';
+      if (buyBtn) buyBtn.disabled = !v.available;
+    }
+
+    optionInputs.forEach(function (input) {
+      input.addEventListener('change', function () {
+        root.querySelectorAll('[data-cp-option-index] .cp__pill').forEach(function (pill) {
+          var inp = pill.querySelector('input');
+          pill.classList.toggle('is-selected', inp && inp.checked);
+        });
+        update();
+      });
+    });
+
+    // --- Quantity ---
+    var qty = root.querySelector('[data-cp-qty]');
+    root.querySelector('[data-cp-qty-minus]').addEventListener('click', function () {
+      qty.value = Math.max(1, (parseInt(qty.value, 10) || 1) - 1);
+    });
+    root.querySelector('[data-cp-qty-plus]').addEventListener('click', function () {
+      qty.value = (parseInt(qty.value, 10) || 1) + 1;
+    });
+
+    // --- Cart actions ---
+    function addToCart() {
+      return fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: variantIdInput.value, quantity: parseInt(qty.value, 10) || 1 })
+      });
+    }
+
+    if (addBtn) addBtn.addEventListener('click', function () {
+      addBtn.disabled = true;
+      var orig = addText ? addText.textContent : '';
+      if (addText) addText.textContent = 'Adding…';
+      addToCart().then(function (r) {
+        if (!r.ok) throw new Error();
+        window.location.href = '/cart';
+      }).catch(function () {
+        addBtn.disabled = false;
+        if (addText) addText.textContent = orig || 'Add to Cart';
+        alert('Could not add to cart. Please try again.');
+      });
+    });
+
+    if (buyBtn) buyBtn.addEventListener('click', function () {
+      buyBtn.disabled = true;
+      buyBtn.textContent = 'Processing…';
+      addToCart().then(function (r) {
+        if (!r.ok) throw new Error();
+        window.location.href = '/checkout';
+      }).catch(function () {
+        buyBtn.disabled = false;
+        buyBtn.textContent = 'Buy Now';
+        alert('Something went wrong. Please try again.');
+      });
+    });
+
+    update();
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Custom product",
+  "settings": [
+    {
+      "type": "product",
+      "id": "product",
+      "label": "Product",
+      "info": "Leave empty to use the current product."
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Primary accent (buttons / pills)",
+      "default": "#2f4a32"
+    },
+    {
+      "type": "color",
+      "id": "accent_color_alt",
+      "label": "Secondary accent (price / Buy Now)",
+      "default": "#c19a4b"
+    },
+    {
+      "type": "header",
+      "content": "Rating"
+    },
+    {
+      "type": "paragraph",
+      "content": "Static display only. Connect a reviews app and replace these values, or turn off."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_rating",
+      "label": "Show rating",
+      "default": false
+    },
+    {
+      "type": "text",
+      "id": "rating_value",
+      "label": "Rating value (0–5)",
+      "default": "4.8"
+    },
+    {
+      "type": "text",
+      "id": "rating_count",
+      "label": "Review count",
+      "default": "245"
+    },
+    {
+      "type": "header",
+      "content": "Product meta"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sku",
+      "label": "Show SKU",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_tags",
+      "label": "Show tags",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_share",
+      "label": "Show share links",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom product"
+    }
+  ]
+}
+{% endschema %}

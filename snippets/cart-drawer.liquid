@@ -177,5 +177,11 @@
       if (drawer.classList.contains('is-open')) load();
       else if (typeof e.detail?.count === 'number') setCount(e.detail.count);
     });
+
+    // Theme-native cart events (e.g. the product card "Add" / quick-add button)
+    document.addEventListener('cart:update', function () {
+      if (drawer.classList.contains('is-open')) load();
+      else fetch('/cart.js').then(function (r) { return r.json(); }).then(function (c) { setCount(c.item_count); });
+    });
   })();
 </script>

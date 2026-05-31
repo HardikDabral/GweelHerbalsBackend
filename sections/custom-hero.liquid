@@ -1,0 +1,219 @@
+{% comment %}
+  Custom home hero — full-width rounded image card with overlay, centered
+  heading, subtitle, CTA button and a stat line. Tucks under the floating
+  header. Background defaults to assets/background.jpeg.
+{% endcomment %}
+
+{%- liquid
+  if section.settings.image != blank
+    assign bg = section.settings.image | image_url: width: 2400
+  else
+    assign bg = 'background.jpeg' | asset_url
+  endif
+-%}
+
+<section class="ch" id="ch-{{ section.id }}">
+  <div class="ch__card" style="background-image: url('{{ bg }}');">
+    <div class="ch__overlay"></div>
+    <div class="ch__content">
+      {%- if section.settings.heading != blank -%}
+        <h1 class="ch__heading">{{ section.settings.heading }}</h1>
+      {%- endif -%}
+      {%- if section.settings.subheading != blank -%}
+        <div class="ch__sub">{{ section.settings.subheading }}</div>
+      {%- endif -%}
+      {%- if section.settings.button_label != blank -%}
+        <a href="{{ section.settings.button_link | default: '#' }}" class="ch__btn">
+          {{ section.settings.button_label }}
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </a>
+      {%- endif -%}
+      {%- if section.settings.stat_number != blank or section.settings.stat_text != blank -%}
+        <p class="ch__stat"><strong>{{ section.settings.stat_number }}</strong> {{ section.settings.stat_text }}</p>
+      {%- endif -%}
+    </div>
+  </div>
+</section>
+
+{% comment %} theme-check-disable {% endcomment %}
+<style>
+  /* Tuck the hero up under the floating header so the navbar sits over the image */
+  #shopify-section-{{ section.id }} { margin-top: -108px; }
+  #ch-{{ section.id }} {
+    padding: 16px 16px 0;
+    background: #fff;
+  }
+  #ch-{{ section.id }} .ch__card {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 7rem);
+    min-height: {{ section.settings.min_height }}px;
+    border-radius: 24px;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #ch-{{ section.id }} .ch__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0,0,0,.70) 0%,
+      rgba(0,0,0,.40) 45%,
+      rgba(0,0,0,.80) 100%
+    );
+    opacity: {{ section.settings.overlay_opacity | divided_by: 100.0 }};
+  }
+  #ch-{{ section.id }} .ch__content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: #fff;
+    max-width: 860px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px 24px 40px;
+  }
+  #ch-{{ section.id }} .ch__heading {
+    margin: 0 0 1.25rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    font-size: clamp(1.875rem, 5vw, 3.75rem);
+    text-shadow: 0 4px 20px rgba(0,0,0,.3);
+    text-wrap: balance;
+  }
+  #ch-{{ section.id }} .ch__sub {
+    margin: 0 0 1.75rem;
+    max-width: 48rem;
+    color: rgba(255,255,255,.95);
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    font-weight: 400;
+    line-height: 1.6;
+  }
+  #ch-{{ section.id }} .ch__sub p { margin: 0; }
+  #ch-{{ section.id }} .ch__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: .95rem 2rem;
+    border-radius: 9999px;
+    background: #f5c542;
+    color: #1a1a1a;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    box-shadow: 0 8px 24px rgba(245,197,66,.5), 0 0 40px rgba(245,197,66,.3), inset 0 1px 0 rgba(255,255,255,.2);
+    transition: transform .3s ease, box-shadow .3s ease, background .3s ease;
+  }
+  #ch-{{ section.id }} .ch__btn:hover {
+    transform: scale(1.05);
+    background: #ffc832;
+    box-shadow: 0 12px 32px rgba(245,197,66,.6), 0 0 50px rgba(245,197,66,.4), inset 0 1px 0 rgba(255,255,255,.3);
+  }
+  #ch-{{ section.id }} .ch__stat {
+    margin: 1.5rem 0 0;
+    color: rgba(255,255,255,.85);
+    font-size: clamp(.875rem, 1.5vw, 1rem);
+    letter-spacing: .02em;
+  }
+  #ch-{{ section.id }} .ch__stat strong { font-weight: 700; }
+
+  @media (max-width: 760px) {
+    #shopify-section-{{ section.id }} { margin-top: -112px; }
+    #ch-{{ section.id }} .ch__card {
+      height: calc(100svh - 44px);
+      min-height: 480px;
+      border-radius: 18px;
+    }
+    #ch-{{ section.id }} .ch__heading {
+      font-weight: 500;
+      font-size: clamp(1.6rem, 6.5vw, 2.5rem);
+    }
+    #ch-{{ section.id }} .ch__sub {
+      font-size: clamp(.9rem, 3.6vw, 1.05rem);
+      margin-bottom: 1.25rem;
+    }
+    #ch-{{ section.id }} .ch__content { padding: 88px 18px 28px; }
+  }
+</style>
+{% comment %} theme-check-enable {% endcomment %}
+
+{% schema %}
+{
+  "name": "Custom hero",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Background image",
+      "info": "Defaults to assets/background.jpeg if left empty."
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay darkness",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "min_height",
+      "label": "Height",
+      "min": 400,
+      "max": 1000,
+      "step": 20,
+      "unit": "px",
+      "default": 760
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Pure Himalayan Lemongrass Rituals for Discerning Homes"
+    },
+    {
+      "type": "richtext",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "<p>Transform quiet Himalayan evenings into spa-like calm with slow rituals. Limited-batch distillation, handpicked from mountain fields. Crafted for those who seek more than mass-produced wellness.</p>"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "label": "Button label",
+      "default": "Shop Now"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button link"
+    },
+    {
+      "type": "text",
+      "id": "stat_number",
+      "label": "Stat number",
+      "default": "100%"
+    },
+    {
+      "type": "text",
+      "id": "stat_text",
+      "label": "Stat text",
+      "default": "Organic & Chemical-Free"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Custom hero"
+    }
+  ]
+}
+{% endschema %}

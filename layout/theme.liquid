@@ -42,7 +42,7 @@
 
   <body class="page-width-{{ settings.page_width }} card-hover-effect-{{ settings.card_hover_effect }}">
     {% render 'skip-to-content-link', href: '#MainContent', text: 'accessibility.skip_to_text' %}
-    {%- if template.name == 'product' -%}
+    {%- if template.name == 'product' or template.name == 'index' -%}
       {%- render 'custom-product-header' -%}
     {%- else -%}
       <div id="header-group">

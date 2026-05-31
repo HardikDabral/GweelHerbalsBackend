@@ -1,0 +1,181 @@
+{% comment %}
+  Slide-in cart drawer for the product page.
+  Opens on [data-cart-open] click or the `cart:open` event.
+  Refreshes on the `cart:updated` event and keeps [data-cart-count] in sync.
+{% endcomment %}
+
+<div class="cd" data-cart-drawer hidden>
+  <div class="cd__overlay" data-cart-close></div>
+  <aside class="cd__panel" role="dialog" aria-modal="true" aria-label="Shopping cart">
+    <header class="cd__head">
+      <h2 class="cd__title">Your Cart</h2>
+      <button type="button" class="cd__close" data-cart-close aria-label="Close cart">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+
+    <div class="cd__body" data-cart-body>
+      <p class="cd__loading">Loading…</p>
+    </div>
+
+    <footer class="cd__foot" data-cart-foot hidden>
+      <div class="cd__subtotal">
+        <span>Subtotal</span>
+        <span data-cart-subtotal></span>
+      </div>
+      <a href="/checkout" class="cd__checkout" data-cart-checkout>Checkout</a>
+    </footer>
+  </aside>
+</div>
+
+<style>
+  .cd { position: fixed; inset: 0; z-index: 100; }
+  .cd[hidden] { display: none; }
+  .cd__overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,.45);
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .cd.is-open .cd__overlay { opacity: 1; }
+  .cd__panel {
+    position: absolute; top: 0; right: 0; height: 100%;
+    width: min(420px, 80%); background: #fff;
+    display: flex; flex-direction: column;
+    box-shadow: -8px 0 30px rgba(0,0,0,.15);
+    transform: translateX(100%); transition: transform .3s ease;
+    font-family: inherit;
+  }
+  .cd.is-open .cd__panel { transform: translateX(0); }
+  .cd__head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .cd__title { margin: 0; font-size: 1.2rem; }
+  .cd__close { border: none; background: none; cursor: pointer; color: #1a1a1a; display: grid; place-items: center; padding: 4px; }
+  .cd__body { flex: 1; overflow-y: auto; padding: 16px 24px; }
+  .cd__loading, .cd__empty { color: rgba(0,0,0,.55); text-align: center; padding: 40px 0; }
+  .cd__item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,.07); }
+  .cd__item-img { width: 72px; height: 72px; border-radius: 10px; object-fit: cover; background: #f5f4f0; flex-shrink: 0; }
+  .cd__item-main { flex: 1; min-width: 0; }
+  .cd__item-title { font-size: .95rem; font-weight: 600; margin: 0 0 2px; line-height: 1.3; }
+  .cd__item-variant { font-size: .8rem; color: rgba(0,0,0,.5); margin: 0 0 8px; }
+  .cd__item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .cd__qty { display: inline-flex; align-items: center; border: 1px solid rgba(0,0,0,.15); border-radius: 999px; overflow: hidden; }
+  .cd__qty button { width: 30px; height: 30px; border: none; background: none; cursor: pointer; font-size: 1rem; color: inherit; }
+  .cd__qty span { min-width: 26px; text-align: center; font-size: .9rem; }
+  .cd__item-price { font-weight: 600; font-size: .95rem; white-space: nowrap; }
+  .cd__remove { background: none; border: none; color: rgba(0,0,0,.45); font-size: .78rem; cursor: pointer; padding: 0; margin-top: 6px; text-decoration: underline; }
+  .cd__remove:hover { color: #1a1a1a; }
+  .cd__foot { padding: 20px 24px; border-top: 1px solid rgba(0,0,0,.08); }
+  .cd__subtotal { display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; }
+  .cd__checkout {
+    display: block; text-align: center; padding: 15px; border-radius: 999px;
+    background: #1a1a1a; color: #fff; text-decoration: none; font-weight: 600;
+    transition: opacity .15s;
+  }
+  .cd__checkout:hover { opacity: .88; }
+</style>
+
+<script>
+  (function () {
+    var drawer = document.querySelector('[data-cart-drawer]');
+    if (!drawer) return;
+    var body = drawer.querySelector('[data-cart-body]');
+    var foot = drawer.querySelector('[data-cart-foot]');
+    var subtotalEl = drawer.querySelector('[data-cart-subtotal]');
+
+    var moneySymbol = {{ shop.currency | json }} === 'INR' ? 'Rs. ' : ({{ cart.currency.symbol | json }} || '');
+    function money(cents) {
+      return moneySymbol + (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+    function setCount(n) {
+      document.querySelectorAll('[data-cart-count]').forEach(function (el) {
+        el.textContent = n; el.hidden = n === 0;
+      });
+    }
+
+    function render(cart) {
+      setCount(cart.item_count);
+      if (!cart.items || !cart.items.length) {
+        body.innerHTML = '<p class="cd__empty">Your cart is empty.</p>';
+        foot.hidden = true;
+        return;
+      }
+      var html = '';
+      cart.items.forEach(function (item) {
+        var img = item.image ? item.image.replace(/(\.[^.]+)(\?.*)?$/, '_160x$1$2') : '';
+        var variant = item.variant_title && item.variant_title !== 'Default Title' ? '<p class="cd__item-variant">' + esc(item.variant_title) + '</p>' : '';
+        html += '' +
+          '<div class="cd__item" data-key="' + esc(item.key) + '">' +
+            '<img class="cd__item-img" src="' + img + '" alt="' + esc(item.product_title) + '">' +
+            '<div class="cd__item-main">' +
+              '<p class="cd__item-title">' + esc(item.product_title) + '</p>' +
+              variant +
+              '<div class="cd__item-row">' +
+                '<div class="cd__qty">' +
+                  '<button type="button" data-step="-1" aria-label="Decrease">−</button>' +
+                  '<span>' + item.quantity + '</span>' +
+                  '<button type="button" data-step="1" aria-label="Increase">+</button>' +
+                '</div>' +
+                '<span class="cd__item-price">' + money(item.final_line_price) + '</span>' +
+              '</div>' +
+              '<button type="button" class="cd__remove" data-remove>Remove</button>' +
+            '</div>' +
+          '</div>';
+      });
+      body.innerHTML = html;
+      subtotalEl.textContent = money(cart.items_subtotal_price);
+      foot.hidden = false;
+    }
+
+    function load() {
+      return fetch('/cart.js').then(function (r) { return r.json(); }).then(render);
+    }
+
+    function change(key, quantity) {
+      body.style.opacity = '.5';
+      fetch('/cart/change.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: key, quantity: quantity })
+      }).then(function (r) { return r.json(); })
+        .then(function (cart) {
+          render(cart);
+          document.dispatchEvent(new CustomEvent('cart:updated', { detail: { count: cart.item_count, silent: true } }));
+        })
+        .finally(function () { body.style.opacity = '1'; });
+    }
+
+    function open() { drawer.hidden = false; requestAnimationFrame(function () { drawer.classList.add('is-open'); }); document.body.style.overflow = 'hidden'; load(); }
+    function close() { drawer.classList.remove('is-open'); document.body.style.overflow = ''; setTimeout(function () { drawer.hidden = true; }, 300); }
+
+    // Body interactions (delegated)
+    body.addEventListener('click', function (e) {
+      var itemEl = e.target.closest('[data-key]');
+      if (!itemEl) return;
+      var key = itemEl.getAttribute('data-key');
+      var qtySpan = itemEl.querySelector('.cd__qty span');
+      var qty = parseInt(qtySpan.textContent, 10) || 1;
+      if (e.target.matches('[data-remove]')) { change(key, 0); }
+      else if (e.target.matches('[data-step]')) {
+        var step = parseInt(e.target.getAttribute('data-step'), 10);
+        change(key, Math.max(0, qty + step));
+      }
+    });
+
+    drawer.querySelectorAll('[data-cart-close]').forEach(function (el) { el.addEventListener('click', close); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && drawer.classList.contains('is-open')) close(); });
+
+    document.addEventListener('click', function (e) {
+      var opener = e.target.closest('[data-cart-open]');
+      if (opener) { e.preventDefault(); open(); }
+    });
+    document.addEventListener('cart:open', open);
+    document.addEventListener('cart:updated', function (e) {
+      if (e.detail && e.detail.silent) return; // change() already re-rendered
+      if (drawer.classList.contains('is-open')) load();
+      else if (typeof e.detail?.count === 'number') setCount(e.detail.count);
+    });
+  })();
+</script>

@@ -88,9 +88,6 @@
 
       <div class="cp__title-row">
         <h1 class="cp__title">{{ product.title }}</h1>
-        <span class="cp__stock" data-cp-stock>
-          {%- if current_variant.available -%}In Stock{%- else -%}Sold Out{%- endif -%}
-        </span>
       </div>
 
       {%- if section.settings.show_rating -%}
@@ -140,19 +137,27 @@
         <input type="hidden" name="id" data-cp-variant-id value="{{ current_variant.id }}">
 
         <div class="cp__actions">
-          <div class="cp__qty">
-            <button type="button" class="cp__qty-btn" data-cp-qty-minus aria-label="Decrease quantity">−</button>
-            <input type="number" class="cp__qty-input" data-cp-qty value="1" min="1" inputmode="numeric" aria-label="Quantity">
-            <button type="button" class="cp__qty-btn" data-cp-qty-plus aria-label="Increase quantity">+</button>
+          <div class="cp__qty-row">
+            <div class="cp__qty">
+              <button type="button" class="cp__qty-btn" data-cp-qty-minus aria-label="Decrease quantity">−</button>
+              <input type="number" class="cp__qty-input" data-cp-qty value="1" min="1" inputmode="numeric" aria-label="Quantity">
+              <button type="button" class="cp__qty-btn" data-cp-qty-plus aria-label="Increase quantity">+</button>
+            </div>
+            <div class="cp__qty-note">
+              <span class="cp__qty-note-title">Select quantity</span>
+              <span class="cp__qty-note-sub">Secure checkout via Shopify</span>
+            </div>
           </div>
 
-          <button type="button" class="cp__btn cp__btn--cart" data-cp-add {% unless current_variant.available %}disabled{% endunless %}>
-            <span data-cp-add-text>{% if current_variant.available %}Add to Cart{% else %}Sold Out{% endif %}</span>
-          </button>
+          <div class="cp__buttons">
+            <button type="button" class="cp__btn cp__btn--cart" data-cp-add {% unless current_variant.available %}disabled{% endunless %}>
+              <span data-cp-add-text>{% if current_variant.available %}Add to Cart{% else %}Sold Out{% endif %}</span>
+            </button>
 
-          <button type="button" class="cp__btn cp__btn--buy" data-cp-buy {% unless current_variant.available %}disabled{% endunless %}>
-            Buy Now
-          </button>
+            <button type="button" class="cp__btn cp__btn--buy" data-cp-buy {% unless current_variant.available %}disabled{% endunless %}>
+              {% if current_variant.available %}Buy Now{% else %}Sold Out{% endif %}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -162,24 +167,6 @@
         {%- endif -%}
         {%- if section.settings.show_tags and product.tags.size > 0 -%}
           <p class="cp__meta-row"><strong>Tags:</strong> {{ product.tags | join: ', ' }}</p>
-        {%- endif -%}
-        {%- if section.settings.show_share -%}
-          {%- assign share_url = shop.url | append: product.url -%}
-          <p class="cp__meta-row cp__share">
-            <strong>Share:</strong>
-            <a href="https://www.facebook.com/sharer/sharer.php?u={{ share_url }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 22v-8h3l1-4h-4V7.5c0-1.1.3-1.9 1.9-1.9H17V2.1C16.7 2.1 15.5 2 14.2 2 11.4 2 9.5 3.7 9.5 6.8V10H6.5v4h3v8H13z"/></svg>
-            </a>
-            <a href="https://twitter.com/intent/tweet?url={{ share_url }}&text={{ product.title | url_encode }}" target="_blank" rel="noopener" aria-label="Share on X">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 2h3l-7 8 8 12h-6l-5-7-6 7H2l8-9L2 2h6l4 6 6-6z"/></svg>
-            </a>
-            <a href="https://pinterest.com/pin/create/button/?url={{ share_url }}&description={{ product.title | url_encode }}" target="_blank" rel="noopener" aria-label="Share on Pinterest">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 00-3.6 19.3c-.1-.8-.1-2 0-2.9l1.2-5s-.3-.6-.3-1.5c0-1.4.8-2.4 1.8-2.4.9 0 1.3.6 1.3 1.4 0 .9-.5 2.2-.8 3.4-.2.9.5 1.7 1.5 1.7 1.8 0 3-2.3 3-5 0-2-1.4-3.6-3.9-3.6a4.4 4.4 0 00-4.6 4.4c0 .9.3 1.5.7 2 .2.2.2.3.1.5l-.2.9c-.1.3-.3.4-.6.2-1.2-.5-1.7-1.9-1.7-3.4 0-2.5 2.1-5.5 6.3-5.5 3.4 0 5.6 2.4 5.6 5 0 3.5-1.9 6.1-4.8 6.1-1 0-1.9-.5-2.2-1.1l-.6 2.4c-.2.8-.7 1.7-1 2.3A10 10 0 1012 2z"/></svg>
-            </a>
-            <a href="mailto:?subject={{ product.title | url_encode }}&body={{ share_url }}" aria-label="Share by email">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
-            </a>
-          </p>
         {%- endif -%}
       </div>
     </div>
@@ -249,11 +236,6 @@
   }
   #cp-{{ section.id }} .cp__title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   #cp-{{ section.id }} .cp__title { margin: 0; font-size: 2rem; line-height: 1.15; }
-  #cp-{{ section.id }} .cp__stock {
-    font-size: .75rem; font-weight: 600; padding: 4px 12px; border-radius: 999px;
-    background: color-mix(in srgb, var(--cp-accent) 14%, white);
-    color: var(--cp-accent); white-space: nowrap;
-  }
   #cp-{{ section.id }} .cp__rating { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
   #cp-{{ section.id }} .cp__stars {
     --cp-rating: 5;
@@ -262,7 +244,7 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   #cp-{{ section.id }} .cp__rating-text { color: var(--cp-muted); }
-  #cp-{{ section.id }} .cp__price { display: flex; align-items: baseline; gap: 12px; }
+  #cp-{{ section.id }} .cp__price { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   #cp-{{ section.id }} .cp__price-current { font-size: 1.6rem; font-weight: 700; color: var(--cp-accent-alt); }
   #cp-{{ section.id }} .cp__price-compare { font-size: 1.1rem; color: var(--cp-muted); text-decoration: line-through; }
   #cp-{{ section.id }} .cp__description { color: rgba(0,0,0,.7); line-height: 1.6; }
@@ -278,7 +260,13 @@
   }
   #cp-{{ section.id }} .cp__pill.is-selected span { background: var(--cp-accent); color: #fff; border-color: var(--cp-accent); }
 
-  #cp-{{ section.id }} .cp__actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  #cp-{{ section.id }} .cp__actions { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin-top: 8px; }
+  #cp-{{ section.id }} .cp__qty-row { display: flex; align-items: center; gap: 16px; }
+  #cp-{{ section.id }} .cp__qty-note { display: flex; flex-direction: column; line-height: 1.3; }
+  #cp-{{ section.id }} .cp__qty-note-title { font-weight: 600; font-size: .95rem; }
+  #cp-{{ section.id }} .cp__qty-note-sub { font-size: .85rem; color: var(--cp-muted); }
+  #cp-{{ section.id }} .cp__buttons { display: flex; gap: 12px; }
+  #cp-{{ section.id }} .cp__buttons .cp__btn { flex: 1; }
   #cp-{{ section.id }} .cp__qty {
     display: flex; align-items: center; border: 1px solid var(--cp-border);
     border-radius: 999px; overflow: hidden;
@@ -298,15 +286,13 @@
   }
   #cp-{{ section.id }} .cp__btn:active { transform: scale(.98); }
   #cp-{{ section.id }} .cp__btn:disabled { opacity: .5; cursor: not-allowed; }
-  #cp-{{ section.id }} .cp__btn--cart { background: var(--cp-accent); color: #fff; }
-  #cp-{{ section.id }} .cp__btn--buy { background: var(--cp-accent-alt); color: #fff; }
+  #cp-{{ section.id }} .cp__btn--cart { background: #1a1a1a; color: #fff; }
+  #cp-{{ section.id }} .cp__btn--buy { background: #f5c542; color: #1a1a1a; }
+  #cp-{{ section.id }} .cp__btn--buy:hover { background: #f1bd2c; }
 
   #cp-{{ section.id }} .cp__meta { margin-top: 8px; font-size: .9rem; color: var(--cp-muted); display: flex; flex-direction: column; gap: 6px; }
   #cp-{{ section.id }} .cp__meta-row { margin: 0; }
   #cp-{{ section.id }} .cp__meta-row strong { color: rgba(0,0,0,.75); }
-  #cp-{{ section.id }} .cp__share { display: flex; align-items: center; gap: 10px; }
-  #cp-{{ section.id }} .cp__share a { color: var(--cp-accent); display: inline-flex; transition: opacity .15s; }
-  #cp-{{ section.id }} .cp__share a:hover { opacity: .6; }
 
   @media (max-width: 860px) {
     #cp-{{ section.id }} .cp__wrap { grid-template-columns: 1fr; gap: 32px; padding: 24px 16px 48px; }
@@ -349,11 +335,10 @@
     var variantIdInput = root.querySelector('[data-cp-variant-id]');
     var priceCurrent = root.querySelector('[data-cp-price-current]');
     var priceCompare = root.querySelector('[data-cp-price-compare]');
-    var stockEl = root.querySelector('[data-cp-stock]');
     var skuEl = root.querySelector('[data-cp-sku]');
+    var buyBtn = root.querySelector('[data-cp-buy]');
     var addBtn = root.querySelector('[data-cp-add]');
     var addText = root.querySelector('[data-cp-add-text]');
-    var buyBtn = root.querySelector('[data-cp-buy]');
 
     var moneySymbol = {{ shop.currency | json }} === 'INR' ? 'Rs. ' : ({{ cart.currency.symbol | json }} || '');
     function formatMoney(cents) {
@@ -379,10 +364,8 @@
     function update() {
       var v = findVariant(selectedOptions());
       if (!v) {
-        if (addBtn) { addBtn.disabled = true; }
-        if (addText) addText.textContent = 'Unavailable';
-        if (buyBtn) buyBtn.disabled = true;
-        if (stockEl) stockEl.textContent = 'Unavailable';
+        if (buyBtn) { buyBtn.disabled = true; buyBtn.textContent = 'Unavailable'; }
+        if (addBtn) { addBtn.disabled = true; if (addText) addText.textContent = 'Unavailable'; }
         return;
       }
       variantIdInput.value = v.id;
@@ -394,10 +377,8 @@
         } else { priceCompare.hidden = true; }
       }
       if (skuEl) skuEl.textContent = v.sku || '';
-      if (stockEl) stockEl.textContent = v.available ? 'In Stock' : 'Sold Out';
-      if (addBtn) { addBtn.disabled = !v.available; }
-      if (addText) addText.textContent = v.available ? 'Add to Cart' : 'Sold Out';
-      if (buyBtn) buyBtn.disabled = !v.available;
+      if (buyBtn) { buyBtn.disabled = !v.available; buyBtn.textContent = v.available ? 'Buy Now' : 'Sold Out'; }
+      if (addBtn) { addBtn.disabled = !v.available; if (addText) addText.textContent = v.available ? 'Add to Cart' : 'Sold Out'; }
     }
 
     optionInputs.forEach(function (input) {
@@ -428,16 +409,33 @@
       });
     }
 
+    function broadcastCartCount() {
+      return fetch('/cart.js')
+        .then(function (r) { return r.json(); })
+        .then(function (cart) {
+          document.dispatchEvent(new CustomEvent('cart:updated', { detail: { count: cart.item_count } }));
+          return cart;
+        });
+    }
+
     if (addBtn) addBtn.addEventListener('click', function () {
+      if (addBtn.disabled) return;
       addBtn.disabled = true;
-      var orig = addText ? addText.textContent : '';
+      var orig = addText ? addText.textContent : 'Add to Cart';
       if (addText) addText.textContent = 'Adding…';
       addToCart().then(function (r) {
         if (!r.ok) throw new Error();
-        window.location.href = '/cart';
+        return broadcastCartCount();
+      }).then(function () {
+        document.dispatchEvent(new CustomEvent('cart:open'));
+        if (addText) addText.textContent = 'Added ✓';
+        setTimeout(function () {
+          if (addText) addText.textContent = orig;
+          addBtn.disabled = false;
+        }, 1500);
       }).catch(function () {
+        if (addText) addText.textContent = orig;
         addBtn.disabled = false;
-        if (addText) addText.textContent = orig || 'Add to Cart';
         alert('Could not add to cart. Please try again.');
       });
     });
@@ -521,12 +519,6 @@
       "type": "checkbox",
       "id": "show_tags",
       "label": "Show tags",
-      "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "show_share",
-      "label": "Show share links",
       "default": true
     }
   ],
